@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Tokenizer
+
 /**
  * The kind of tokens
  */
@@ -150,7 +152,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-') {
+    if (strchr("+-*/()", *p)) {
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -168,6 +170,175 @@ Token *tokenize(char *p) {
   return head.next;
 }
 
+
+// Parser
+
+/**
+ * The kind of abstract syntax tree (AST) nodes
+ */
+typedef enum {
+  ND_ADD,   // +
+  ND_SUB,   // -
+  ND_MUL,   // *
+  ND_DIV,   // /
+  ND_NUM,   // Integer
+} NodeKind;
+
+typedef struct Node Node;
+
+/**
+ * The AST node type
+ */
+struct Node {
+  NodeKind kind; // The kind of the node
+  const Node *lhs;     // Left hand side
+  const Node *rhs;     // Right hand side
+  int val;       // The value of the integer if the kind is ND_NUM
+};
+
+/**
+ * Create a new AST node
+ *
+ * @param kind the kind of the AST node to create
+ * @param lhs  the lhs of the AST node to create
+ * @param rhs  the rhs of the AST node to create
+ * @return the pointer to the created AST node
+ */
+Node *new_node(NodeKind kind, const Node *lhs, const Node *rhs) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  node->lhs = lhs;
+  node->rhs = rhs;
+
+  return node;
+}
+
+/**
+ * Create a new AST node for a number
+ *
+ * @param val the value of the AST number node to create
+ * @return the pointer to the created number node
+ */
+Node *new_node_num(int val) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_NUM;
+  node->val = val;
+
+  return node;
+}
+
+// Production rules:
+//   expr    = mul ("+" mul | "-" mul)*
+//   mul     = primary ("*" primary | "/" primary)*
+//   primary = num | "(" expr ")"
+Node *expr();
+Node *mul();
+Node *primary();
+
+/**
+ * Parse tokens with the "expr" production rule
+ *
+ *   expr    = mul ("+" mul | "-" mul)*
+ *
+ * @return the constructed AST node
+ */
+Node *expr() {
+  Node *node = mul();
+
+  for (;;) {
+    if (consume('+')) {
+      node = new_node(ND_ADD, node, mul());
+    } else if (consume('-')) {
+      node = new_node(ND_SUB, node, mul());
+    } else {
+      return node;
+    }
+  }
+}
+
+/**
+ * Parse tokens with the "mul" production rule
+ *
+ *   mul     = primary ("*" primary | "/" primary)*
+ *
+ * @return the constructed AST node
+ */
+Node *mul() {
+  Node *node = primary();
+
+  for (;;) {
+    if (consume('*')) {
+      node = new_node(ND_MUL, node, primary());
+    } else if (consume('/')) {
+      node = new_node(ND_DIV, node, primary());
+    } else {
+      return node;
+    }
+  }
+}
+
+/**
+ * Parse tokens with the "primary" production rule
+ *
+ *   primary = num | "(" expr ")"
+ *
+ * @return the constructed AST node
+ */
+Node *primary() {
+  if (consume('(')) {
+    Node *node = expr();
+    consume(')');
+    return node;
+  }
+
+  return new_node_num(expect_number());
+}
+
+
+// Assembly code generator
+
+/**
+ * Generate a series of assembly code that emulates stack machine from the AST
+ *
+ * @param node the node from which the assembly code is generated
+ */
+void gen(const Node *node) {
+  if (node->kind == ND_NUM) {
+    printf("  push %d\n", node->val);
+    return;
+  }
+
+  gen(node->lhs);
+  gen(node->rhs);
+
+  printf("  pop rdi\n");
+  printf("  pop rax\n");
+
+  switch (node->kind) {
+    case ND_ADD:
+      printf("  add rax, rdi\n");
+      break;
+    case ND_SUB:
+      printf("  sub rax, rdi\n");
+      break;
+    case ND_MUL:
+      printf("  imul rax, rdi\n");
+      break;
+    case ND_DIV:
+      // Intel's idiv operation concatenates RDX and RAX, regards them as a
+      // 128bit intege, devide it by the given operand, set its quotient
+      // to RAX and set its remainder to RDX.
+      // cqo operation expand the 64bit RAX value to 128bit and set it to
+      // RDX and RAX.
+      printf("  cqo\n");
+      printf("  idiv rdi\n");
+      break;
+  }
+
+  printf("  push rax\n");
+}
+
+
 int main(int argc,  char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Invalid number of arguments\n");
@@ -178,24 +349,18 @@ int main(int argc,  char **argv) {
 
   // Tokenize the argument.
   token = tokenize(argv[1]);
+  // Parse the tokenized input.
+  Node *node = expr();
 
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  // The first token must be a number.
-  printf(" mov rax, %d\n", expect_number());
+  // Generate a seris of assembly code descending the AST nodes.
+  gen(node);
 
-  while (!at_eof()) {
-    if (consume('+')) {
-      printf("  add rax, %d\n", expect_number());
-      continue;
-    }
-
-    expect('-');
-    printf("  sub rax, %d\n", expect_number());
-  }
-
+  // Pop the top of the stack and load it to RAX.
+  printf("  pop rax\n");
   printf("  ret\n");
   return 0;
 }
