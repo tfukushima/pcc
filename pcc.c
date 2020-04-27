@@ -29,17 +29,26 @@ struct Token {
 // The current token
 Token *token;
 
+// The whole input
+char *user_input;
+
 /**
  * Report an error.
  *
  * This function takes the same arguments as printf.
  *
+ * @param loc the error location in the input
  * @param fmt the format string
  * @param ... the parameters to be used for the formatting
  */
-void error(char *fmt, ...) {
+void error_at(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
+
+  int pos = loc - user_input;
+  fprintf(stderr, "%s\n", user_input);
+  fprintf(stderr, "%*s", pos, "");
+  fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   va_end(ap);
@@ -74,7 +83,7 @@ bool consume(char op) {
  */
 void expect(char op) {
   if (token->kind != TK_RESERVED || token->str[0] != op) {
-    error("The operaor is not '%c'", op);
+    error_at(token->str, "The operaor is not '%c'", op);
   }
   token = token->next;
 }
@@ -89,7 +98,7 @@ void expect(char op) {
  */
 int expect_number() {
   if (token->kind != TK_NUM) {
-    error("Not a number");
+    error_at(token->str, "Not a number");
   }
   int val = token->val;
   token = token->next;
@@ -152,7 +161,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    error("Cannot tokenize");
+    error_at(cur->str, "Cannot tokenize");
   }
 
   new_token(TK_EOF, cur, p);
@@ -164,6 +173,8 @@ int main(int argc,  char **argv) {
     fprintf(stderr, "Invalid number of arguments\n");
     return 1;
   }
+
+  user_input = argv[1];
 
   // Tokenize the argument.
   token = tokenize(argv[1]);
