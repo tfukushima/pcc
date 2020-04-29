@@ -22,10 +22,11 @@ typedef struct Token Token;
  * Token type
  */
 struct Token {
-  TokenKind kind;  //
+  TokenKind kind;  // The kind of the token
   Token *next;     // The next input token
   int val;         // The value of the number if the kind of the token is TK_NUM
   char *str;       // The token string
+  int len;         // The length of the token
 };
 
 // The current token
@@ -63,11 +64,13 @@ void error_at(char *loc, char *fmt, ...) {
  * If the next token is the expected operator, scan a token and return true.
  * Otherwise return false.
  *
- * @param op the operator character
+ * @param op the pointer to the operator string
  * @return true if the next token is the expected operator, otherwise false
  */
-bool consume(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op) {
+bool consume(char *op) {
+  if (token->kind != TK_RESERVED ||
+      strlen(op) != token->len ||
+      memcmp(token->str, op, token->len)) {
     return false;
   }
   token = token->next;
@@ -81,11 +84,13 @@ bool consume(char op) {
  * If the next token is the expected operator, scan a token. Otherwise report the
  * error.
  *
- * @param op the operator character
+ * @param op the pointer to the operator string
  */
-void expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op) {
-    error_at(token->str, "The operaor is not '%c'", op);
+void expect(char *op) {
+  if (token->kind != TK_RESERVED ||
+      strlen(op) != token->len ||
+      memcmp(token->str, op, token->len)) {
+    error_at(token->str, "expected \"%c\"", op);
   }
   token = token->next;
 }
@@ -123,12 +128,14 @@ bool at_eof() {
  * @param kind the kind of the token to create
  * @param cur  the pointer to the current token
  * @param str  the token string
+ * @param len  the length of the token string
  * @return the pointer to the created token
  */
-Token *new_token(TokenKind kind, Token *cur, char *str) {
+Token *new_token(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
+  tok->len = len;
   cur->next = tok;
 
   return tok;
@@ -152,21 +159,29 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
+    if (strchr("+-*/()<>=!", *p)) {
+      if ((*p == '=' || *p == '!' || *p == '<' || *p == '>') && *(p+1) == '=') {
+        cur = new_token(TK_RESERVED, cur, p, 2);
+        p += 2;
+      } else {
+        cur = new_token(TK_RESERVED, cur, p++, 1);
+      }
       continue;
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
-      cur->val = strtol(p, &p, 10);
+      const char *start = p;
+      int val = strtol(p, &p, 10);
+      cur = new_token(TK_NUM, cur, p, p - start);
+      cur->val = val;
       continue;
     }
 
     error_at(cur->str, "Cannot tokenize");
   }
 
-  new_token(TK_EOF, cur, p);
+  new_token(TK_EOF, cur, p, 0);
+
   return head.next;
 }
 
@@ -182,6 +197,10 @@ typedef enum {
   ND_MUL,   // *
   ND_DIV,   // /
   ND_NUM,   // Integer
+  ND_EQ,    // ==
+  ND_NE,    // !=
+  ND_LT,    // <
+  ND_LE,    // <=
 } NodeKind;
 
 typedef struct Node Node;
@@ -228,11 +247,17 @@ Node *new_node_num(int val) {
 }
 
 // Production rules:
-//   expr    = mul ("+" mul | "-" mul)*
-//   mul     = unary ("*" unary | "/" unary)*
-//   unary   = ("+"  | "-")? primary
-//   primary = num | "(" expr ")"
+//   expr       = equality
+//   equality   = relational ("==" relational | "!=" relational)*
+//   relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+//   add        = mul ("+" mul | "-" mul)*
+//   mul        = unary ("*" unary | "/" unary)*
+//   unary      = ("+"  | "-")? primary
+//   primary    = num | "(" expr ")"
 Node *expr();
+Node *equality();
+Node *relational();
+Node *add();
 Node *mul();
 Node *unary();
 Node *primary();
@@ -240,17 +265,76 @@ Node *primary();
 /**
  * Parse tokens with the "expr" production rule
  *
- *   expr    = mul ("+" mul | "-" mul)*
+ *   expr       = equality
  *
  * @return the constructed AST node
  */
 Node *expr() {
+  return equality();
+}
+
+/**
+ * Parse tokens with the "equality" production rule
+ *
+ *   equality   = relational ("==" relational | "!=" relational)*
+ *
+ *  @return the constructed AST node
+ */
+Node *equality() {
+  Node *node = relational();
+
+  for (;;) {
+    if (consume("==")) {
+      node = new_node(ND_EQ, node, relational());
+    } else if (consume("!=")) {
+      node = new_node(ND_NE, node, relational());
+    } else {
+      return node;
+    }
+  }
+}
+
+/**
+ * Parse tokens with the "relational" production rule
+ *
+ *   relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+ *
+ *  @return the constructed AST node
+ */
+Node *relational() {
+  Node *node = add();
+
+  for (;;) {
+    // flip the operator and the operand positions to canonicalize ">" to "<"
+    // and ">=" to "<=".
+    if (consume(">")) {
+      node = new_node(ND_LT, add(), node);
+    } else if (consume(">=")) {
+      node = new_node(ND_LE, add(), node);
+    } else if (consume("<")) {
+      node = new_node(ND_LT, node, add());
+    } else if (consume("<=")) {
+      node = new_node(ND_LE, node, add());
+    } else {
+      return node;
+    }
+  }
+}
+
+/**
+ * Parse tokens with the "add" production rule
+ *
+ *   add        = mul ("+" mul | "-" mul)*
+ *
+ * @return the constructed AST node
+ */
+Node *add() {
   Node *node = mul();
 
   for (;;) {
-    if (consume('+')) {
+    if (consume("+")) {
       node = new_node(ND_ADD, node, mul());
-    } else if (consume('-')) {
+    } else if (consume("-")) {
       node = new_node(ND_SUB, node, mul());
     } else {
       return node;
@@ -261,7 +345,7 @@ Node *expr() {
 /**
  * Parse tokens with the "mul" production rule
  *
- *   mul     = primary ("*" primary | "/" primary)*
+ *   mul        = unary ("*" unary | "/" unary)*
  *
  * @return the constructed AST node
  */
@@ -269,9 +353,9 @@ Node *mul() {
   Node *node = unary();
 
   for (;;) {
-    if (consume('*')) {
+    if (consume("*")) {
       node = new_node(ND_MUL, node, unary());
-    } else if (consume('/')) {
+    } else if (consume("/")) {
       node = new_node(ND_DIV, node, unary());
     } else {
       return node;
@@ -287,11 +371,11 @@ Node *mul() {
  * @return the constructed AST node
  */
 Node *unary() {
-  if (consume('+')) {
+  if (consume("+")) {
     return primary();
   }
 
-  if (consume('-')) {
+  if (consume("-")) {
     return new_node(ND_SUB, new_node_num(0), primary());
   }
 
@@ -306,9 +390,9 @@ Node *unary() {
  * @return the constructed AST node
  */
 Node *primary() {
-  if (consume('(')) {
+  if (consume("(")) {
     Node *node = expr();
-    consume(')');
+    consume(")");
     return node;
   }
 
@@ -353,6 +437,31 @@ void gen(const Node *node) {
       // RDX and RAX.
       printf("  cqo\n");
       printf("  idiv rdi\n");
+      break;
+    case ND_EQ:
+      // sete sets the result of cmp to the register given as its operand.
+      // If the operands of cmp are equql it sets 1 to the operand, otherwise
+      // it sets to 0 to the register. AL is an alias for the lower 8bit of
+      // RAX and the upper 58bit is preserved in sete. movzb clears the upper
+      // 58bit up with zeros.
+      printf("  cmp rax, rdi\n");
+      printf("  sete al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_NE:
+      printf("  cmp rax, rdi\n");
+      printf("  setne al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_LT:
+      printf("  cmp rax, rdi\n");
+      printf("  setl al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_LE:
+      printf("  cmp rax, rdi\n");
+      printf("  setle al\n");
+      printf("  movzb rax, al\n");
       break;
   }
 
