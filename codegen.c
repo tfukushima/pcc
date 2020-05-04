@@ -1,14 +1,47 @@
 #include "pcc.h"
 
 /*
+ * Generate a series of assembly code that pushes the left value to the stack
+ * and output it to stdout.
+ */
+static void gen_lval(const Node *node) {
+  if (node->kind != ND_LVAR) {
+    error_at(token->str, "The left hand side of the assiment is not left value.");
+  }
+
+  printf("  mov rax, rbp\n");
+  printf("  sub rax, %d\n", node->offset);
+  printf("  push rax\n");
+}
+
+/*
  * Generate a series of assembly code that emulates stack machine from the AST
  *
  * @param node the node from which the assembly code is generated
  */
 static void gen(const Node *node) {
-  if (node->kind == ND_NUM) {
-    printf("  push %d\n", node->val);
-    return;
+  // Handle terminal and assignment nodes.
+  switch (node->kind) {
+    case ND_NUM:
+      printf("  push %d\n", node->val);
+      return;
+    case ND_LVAR:
+      gen_lval(node);
+      printf("  pop rax\n");
+      printf("  mov rax, [rax]\n");
+      printf("  push rax\n");
+
+      return;
+    case ND_ASSIGN:
+      gen_lval(node->lhs);
+      gen(node->rhs);
+
+      printf("  pop rdi\n");
+      printf("  pop rax\n");
+      printf("  mov [rax], rdi\n");
+      printf("  push rdi\n");
+
+      return;
   }
 
   gen(node->lhs);
@@ -66,6 +99,24 @@ static void gen(const Node *node) {
   printf("  push rax\n");
 }
 
+/*
+ * Generate prologue of the code and output it to stdout.
+ */
+static void gen_prologue() {
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  printf("  sub rsp, 208\n");  // allocate 26 (chars) * 8 bytes for variables.
+}
+
+/*
+ * Generate epilogue of the code and output it to stdout.
+ */
+static void gen_epilogue() {
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  printf("  ret\n");
+}
+
 /**
  * Generate a complete assembly code that emulates stack machine from the AST
  * and output it to stdout.
@@ -77,10 +128,15 @@ void codegen(const Node *node) {
   printf(".global main\n");
   printf("main:\n");
 
-  // Generate a seris of assembly code descending the AST nodes.
-  gen(node);
+  gen_prologue();
 
-  // Pop the top of the stack and load it to RAX.
-  printf("  pop rax\n");
-  printf("  ret\n");
+  for (int i = 0; code[i]; i++) {
+    // Generate a seris of assembly code descending the AST nodes.
+    gen(code[i]);
+
+    // Pop the top of the stack and load it to RAX.
+    printf("  pop rax\n");
+  }
+
+  gen_epilogue();
 }
