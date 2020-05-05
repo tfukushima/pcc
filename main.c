@@ -17,9 +17,10 @@ int main(int argc,  char **argv) {
   // Tokenize the argument.
   token = tokenize(argv[1]);
   // Parse the tokenized input.
-  Node *node = program();
+  Function *prog = program();
+  LVar *lv = prog->locals;
   // Generate the assembly code from the parsed AST.
-  codegen(node);
+  codegen(prog);
 
   return 0;
 }

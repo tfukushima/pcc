@@ -1,5 +1,19 @@
 #include "pcc.h"
 
+/*
+ * Examines if the character is an alphabet or '_'.
+ */
+static inline bool isalphau(char c) {
+  return isalpha(c) || c == '_';
+}
+
+/*
+ * Examines if the character is an alphabet, a number or '_'.
+ */
+static inline bool isalnumu(char c) {
+  return isalnum(c) || c == '_';
+}
+
 /**
  * Report an error.
  *
@@ -53,8 +67,7 @@ bool consume(char *op) {
  */
 Token *consume_ident() {
   if (token->kind != TK_IDENT ||
-      token->len != 1 ||
-      !('a' <= token->str[0] && token->str[0] <= 'z')) {
+      token->len < 1) {
     return NULL;
   }
 
@@ -145,8 +158,13 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      cur = new_token(TK_IDENT, cur, p++, 1);
+    if (isalphau(*p)) {
+      int vlen = 1;
+      while (isalnumu(*(p+vlen))) {
+        vlen++;
+      }
+      cur = new_token(TK_IDENT, cur, p, vlen);
+      p += vlen;
       continue;
     }
 

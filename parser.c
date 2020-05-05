@@ -3,6 +3,12 @@
 // The entire parsed code in AST.
 Node *code[100];
 
+// The list of local variables. All local variables created during the parsing
+// are accumulated to this list. Newer variables are prepended to the list and
+// the head of the list is the latest defined vvariable. It is initialized with
+// NULL that represents the end of the list.
+static LVar* locals = NULL;
+
 /*
  * Create a new AST node
  *
@@ -30,6 +36,40 @@ static Node *new_node_num(int val) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_NUM;
   node->val = val;
+
+  return node;
+}
+
+/*
+ * Finds a local variable by its name.
+ *
+ * @return the found local variable if any, otherwise the null pointer
+ */
+static LVar *find_lvar(const Token *tok) {
+  for (LVar *var = locals; var; var = var->next) {
+    if (!strncmp(tok->str, var->name, tok->len)) {
+      return var;
+    }
+  }
+
+  return NULL;
+}
+
+
+static LVar *new_lvar(const char *name) {
+  LVar *lvar = calloc(1, sizeof(LVar));
+  lvar->next = locals;
+  lvar->name = name;
+  lvar->offset = (locals ? locals->offset : 0) + 8;
+  locals = lvar;
+
+  return lvar;
+}
+
+static Node *new_lvar_node(LVar *lvar) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_LVAR;
+  node->lvar = lvar;
 
   return node;
 }
@@ -62,12 +102,21 @@ static Node *primary();
  *
  * The parsed result is store in the global variable "code".
  */
-void *program() {
-  int i = 0;
+Function *program() {
+  Node head = {};
+  Node *cur = &head;
+
   while (!at_eof()) {
-    code[i++] = stmt();
+    cur->next = stmt();
+    cur = cur->next;
   }
-  code[i] = NULL;
+
+  Function *program = calloc(1, sizeof(Function));
+  program->node = head.next;
+  program->locals = locals;
+  program->stack_size = locals ? locals->offset : 0;
+
+  return program;
 }
 
 /*
@@ -237,10 +286,12 @@ static Node *primary() {
 
   Token *tok = consume_ident();
   if (tok) {
-    Node *node = calloc(1, sizeof(Node));
-    node->kind = ND_LVAR;
-    node->offset = (tok->str[0] - 'a' + 1) * 8;
-    return node;
+    LVar *lvar = find_lvar(tok);
+    if (!lvar) {
+      lvar = new_lvar(strndup(tok->str, tok->len));
+    }
+
+    return new_lvar_node(lvar);
   }
 
   return new_node_num(expect_number());
