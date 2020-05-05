@@ -1,5 +1,8 @@
 #include "pcc.h"
 
+// The entire parsed code in AST.
+Node *code[100];
+
 /*
  * Create a new AST node
  *
@@ -32,13 +35,19 @@ static Node *new_node_num(int val) {
 }
 
 // Production rules:
-//   expr       = equality
+//   program    = stmt*
+//   stmt       = expr ";"
+//   expr       = assign
+//   assign     = equality ("=" assign)?
 //   equality   = relational ("==" relational | "!=" relational)*
 //   relational = add ("<" add | "<=" add | ">" add | ">=" add)*
 //   add        = mul ("+" mul | "-" mul)*
 //   mul        = unary ("*" unary | "/" unary)*
 //   unary      = ("+"  | "-")? primary
-//   primary    = num | "(" expr ")"
+//   primary    = num | ident | "(" expr ")"
+static Node *stmt();
+static Node *expr();
+static Node *assign();
 static Node *equality();
 static Node *relational();
 static Node *add();
@@ -47,14 +56,60 @@ static Node *unary();
 static Node *primary();
 
 /**
- * Parse tokens with the "expr" production rule
+ * Parse tokens with the "program" production rule
  *
- *   expr       = equality
+ *   stmt       = expr ";"
+ *
+ * The parsed result is store in the global variable "code".
+ */
+void *program() {
+  int i = 0;
+  while (!at_eof()) {
+    code[i++] = stmt();
+  }
+  code[i] = NULL;
+}
+
+/*
+ * Parse tokens with the "stmt" production rule
+ *
+ *   stmt       = expr ";"
  *
  * @return the constructed AST node
  */
-Node *expr() {
-  return equality();
+static Node *stmt() {
+  Node *node = expr();
+  expect(";");
+
+  return node;
+}
+
+/*
+ * Parse tokens with the "expr" production rule
+ *
+ *   expr       = assign
+ *
+ * @return the constructed AST node
+ */
+static Node *expr() {
+  return assign();
+}
+
+/*
+ * Parse tokens with the "assign" production rule
+ *
+ *   assign     = equality ("=" assign)?
+ *
+ * @return the constructed AST node
+ */
+static Node *assign() {
+  Node *node = equality();
+
+  if (consume("=")) {
+    node = new_node(ND_ASSIGN, node, assign());
+  }
+
+  return node;
 }
 
 /*
@@ -169,7 +224,7 @@ static Node *unary() {
 /*
  * Parse tokens with the "primary" production rule
  *
- *   primary = num | "(" expr ")"
+ *   primary = num | ident | "(" expr ")"
  *
  * @return the constructed AST node
  */
@@ -177,6 +232,14 @@ static Node *primary() {
   if (consume("(")) {
     Node *node = expr();
     consume(")");
+    return node;
+  }
+
+  Token *tok = consume_ident();
+  if (tok) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (tok->str[0] - 'a' + 1) * 8;
     return node;
   }
 

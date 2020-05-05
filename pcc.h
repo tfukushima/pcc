@@ -15,6 +15,7 @@
  */
 typedef enum {
   TK_RESERVED,  // Operator token
+  TK_IDENT,     // Identifier
   TK_NUM,       // Number token
   TK_EOF,       // End of file, which is the end of the input
 } TokenKind;
@@ -65,6 +66,16 @@ void error_at(char *loc, char *fmt, ...);
 bool consume(char *op);
 
 /**
+ * Consumes an identifier token.
+ *
+ * If the next token is an identifier, scan a token and return the node
+ * constructed for the identifier.
+ *
+ * @return the current identifier token
+ */
+Token *consume_ident();
+
+/**
  * Expects a valid token
  *
  * If the next token is the expected operator, scan a token. Otherwise report the
@@ -106,15 +117,17 @@ Token *tokenize(char *p);
  * The kind of abstract syntax tree (AST) nodes
  */
 typedef enum {
-  ND_ADD,   // +
-  ND_SUB,   // -
-  ND_MUL,   // *
-  ND_DIV,   // /
-  ND_NUM,   // Integer
-  ND_EQ,    // ==
-  ND_NE,    // !=
-  ND_LT,    // <
-  ND_LE,    // <=
+  ND_ADD,    // +
+  ND_SUB,    // -
+  ND_MUL,    // *
+  ND_DIV,    // /
+  ND_NUM,    // Integer
+  ND_EQ,     // ==
+  ND_NE,     // !=
+  ND_LT,     // <
+  ND_LE,     // <=
+  ND_ASSIGN, // Variable assignment
+  ND_LVAR,   // Local variable
 } NodeKind;
 
 typedef struct Node Node;
@@ -123,20 +136,26 @@ typedef struct Node Node;
  * The AST node type
  */
 struct Node {
-  NodeKind kind; // The kind of the node
-  const Node *lhs;     // Left hand side
-  const Node *rhs;     // Right hand side
-  int val;       // The value of the integer if the kind is ND_NUM
+  NodeKind kind;   // The kind of the node
+  const Node *lhs; // Left hand side
+  const Node *rhs; // Right hand side
+  int val;         // The value of the integer if the kind is ND_NUM
+  int offset;      // The offset for the variable only if the kind is ND_LVAR
 };
 
 /**
- * Parse tokens with the "expr" production rule
- *
- *   expr       = equality
- *
- * @return the constructed AST node
+ * The entire parsed code in AST.
  */
-Node *expr();
+extern Node *code[100];
+
+/**
+ * Parse tokens with the "program" production rule
+ *
+ *   stmt       = expr ";"
+ *
+ * The parsed result is store in the global variable "code".
+ */
+void *program();
 
 
 // Assembly code generator

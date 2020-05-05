@@ -44,18 +44,39 @@ bool consume(char *op) {
 }
 
 /**
+ * Consumes an identifier token.
+ *
+ * If the next token is an identifier, scan a token and return the node
+ * constructed for the identifier.
+ *
+ * @return the current identifier token
+ */
+Token *consume_ident() {
+  if (token->kind != TK_IDENT ||
+      token->len != 1 ||
+      !('a' <= token->str[0] && token->str[0] <= 'z')) {
+    return NULL;
+  }
+
+  Token *cur = token;
+  token = token->next;
+
+  return cur;
+}
+
+/**
  * Expects a valid token
  *
- * If the next token is the expected operator, scan a token. Otherwise report the
+ * If the next token is the expected string, scan a token. Otherwise report the
  * error.
  *
- * @param op the pointer to the operator string
+ * @param op the pointer to the expected string
  */
 void expect(char *op) {
   if (token->kind != TK_RESERVED ||
       strlen(op) != token->len ||
       memcmp(token->str, op, token->len)) {
-    error_at(token->str, "expected \"%c\"", op);
+    error_at(token->str, "expected \"%s\"", op);
   }
   token = token->next;
 }
@@ -124,7 +145,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>=!", *p)) {
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++, 1);
+      continue;
+    }
+
+    if (strchr("+-*/()<>=!;", *p)) {
       if ((*p == '=' || *p == '!' || *p == '<' || *p == '>') && *(p+1) == '=') {
         cur = new_token(TK_RESERVED, cur, p, 2);
         p += 2;
