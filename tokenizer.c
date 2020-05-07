@@ -47,7 +47,7 @@ void error_at(char *loc, char *fmt, ...) {
  * @return true if the next token is the expected operator, otherwise false
  */
 bool consume(char *op) {
-  if (token->kind != TK_RESERVED ||
+  if ((token->kind != TK_RESERVED && token->kind != TK_RETURN) ||
       strlen(op) != token->len ||
       memcmp(token->str, op, token->len)) {
     return false;
@@ -155,6 +155,12 @@ Token *tokenize(char *p) {
     // Skip the white spaces.
     if (isspace(*p)) {
       p++;
+      continue;
+    }
+
+    if (!strncmp(p, "return", 6) && !isalnumu(p[6])) {
+      cur = new_token(TK_RETURN, cur, p, 6);
+      p += 6;
       continue;
     }
 

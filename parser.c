@@ -77,6 +77,7 @@ static Node *new_lvar_node(LVar *lvar) {
 // Production rules:
 //   program    = stmt*
 //   stmt       = expr ";"
+//              | "return" expr ";"
 //   expr       = assign
 //   assign     = equality ("=" assign)?
 //   equality   = relational ("==" relational | "!=" relational)*
@@ -123,11 +124,18 @@ Function *program() {
  * Parse tokens with the "stmt" production rule
  *
  *   stmt       = expr ";"
+ *              | "return" expr ";"
  *
  * @return the constructed AST node
  */
 static Node *stmt() {
-  Node *node = expr();
+  Node *node;
+
+  if (consume("return")) {
+    node = new_node(ND_RETURN, expr(), NULL);
+  } else {
+    node = expr();
+  }
   expect(";");
 
   return node;

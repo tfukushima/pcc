@@ -18,6 +18,7 @@ typedef enum {
   TK_RESERVED,  // Operator token
   TK_IDENT,     // Identifier
   TK_NUM,       // Number token
+  TK_RETURN,    // "return" token
   TK_EOF,       // End of file, which is the end of the input
 } TokenKind;
 
@@ -129,6 +130,7 @@ typedef enum {
   ND_LE,     // <=
   ND_ASSIGN, // Variable assignment
   ND_LVAR,   // Local variable
+  ND_RETURN, // Return statement
 } NodeKind;
 
 typedef struct LVar LVar;
