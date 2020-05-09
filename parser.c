@@ -77,6 +77,7 @@ static Node *new_lvar_node(LVar *lvar) {
 // Production rules:
 //   program    = stmt*
 //   stmt       = expr ";"
+//              | "if" "(" expr ")" stmt ("else" stmt)?
 //              | "return" expr ";"
 //   expr       = assign
 //   assign     = equality ("=" assign)?
@@ -124,6 +125,7 @@ Function *program() {
  * Parse tokens with the "stmt" production rule
  *
  *   stmt       = expr ";"
+ *              | "if" "(" expr ")" stmt ("else" stmt)?
  *              | "return" expr ";"
  *
  * @return the constructed AST node
@@ -131,7 +133,18 @@ Function *program() {
 static Node *stmt() {
   Node *node;
 
-  if (consume("return")) {
+  if (consume("if")) {
+    expect("(");
+    Node *cond = expr();
+    expect(")");
+    Node *body = stmt();
+    Node *ebody = NULL;
+    if (consume("else")) {
+      ebody = stmt();
+    }
+    node = new_node(ND_IF, cond, new_node(ND_IF, body, ebody));
+    return node;
+  } else if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {
     node = expr();

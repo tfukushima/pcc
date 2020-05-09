@@ -57,5 +57,9 @@ assert 42 "foo_bar = 21; baz_ = 2; quxx = foo_bar * baz_;"
 assert 0 "return 0;"
 assert 42 "return 42;"
 assert 3 "a = 1; b = 2; return a+b;"
+assert 42 "if (1) 42;"
+assert 42 "if (0) 1; else 42;"
+assert 42 "a = 0; b = 0; if (a == b) 42; else 1;"
+assert 42 "a = 0; b = 0; if (a < b) 1; else 42;"
 
 echo OK

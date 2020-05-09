@@ -1,5 +1,9 @@
 #include "pcc.h"
 
+static int label_seq = 0;
+
+static void gen(const Node *node);
+
 /*
  * Generate a series of assembly code that pushes the left value to the stack
  * and output it to stdout.
@@ -12,6 +16,32 @@ static void gen_lval(const Node *node) {
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->lvar->offset);
   printf("  push rax\n");
+}
+
+/*
+ * Generates a series of assembly code for the if statement.
+ */
+static void gen_if(const Node *node) {
+  if (node->kind != ND_IF) {
+    error_at(token->str, "Not an if statement.");
+  }
+
+  // Generate the condition code.
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.else.%d\n", label_seq);
+  const Node *bodies = node->rhs;
+  // Generate the body code.
+  gen(bodies->lhs);
+  printf("  jmp .L.end.%d\n", label_seq);
+  printf(".L.else.%d:\n", label_seq);
+  // Generate the else body code if any.
+  if (bodies->rhs) {
+    gen(bodies->rhs);
+  }
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
 }
 
 /*
@@ -41,6 +71,9 @@ static void gen(const Node *node) {
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
 
+      return;
+    case ND_IF:
+      gen_if(node);
       return;
     case ND_RETURN:
       gen(node->lhs);
