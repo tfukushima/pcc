@@ -61,5 +61,7 @@ assert 42 "if (1) 42;"
 assert 42 "if (0) 1; else 42;"
 assert 42 "a = 0; b = 0; if (a == b) 42; else 1;"
 assert 42 "a = 0; b = 0; if (a < b) 1; else 42;"
+assert 10 "a = 0; while (a < 10) a = a + 1; a;"
+assert 0 "a = 10; while (a > 0) a = a - 1; a;"
 
 echo OK

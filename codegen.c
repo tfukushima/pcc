@@ -45,6 +45,26 @@ static void gen_if(const Node *node) {
 }
 
 /*
+ * Generates a series of assembly code for the while statement.
+ */
+static void gen_while(const Node *node) {
+  if (node->kind != ND_WHILE) {
+    error_at(token->str, "Not a while statement.");
+  }
+
+  printf(".L.begin.%d:\n", label_seq);
+  // Generate the condition code;
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.end.%d\n", label_seq);
+  gen(node->rhs);
+  printf("  jmp .L.begin.%d\n", label_seq);
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
+}
+
+/*
  * Generate a series of assembly code that emulates stack machine from the AST
  *
  * @param node the node from which the assembly code is generated
@@ -74,6 +94,9 @@ static void gen(const Node *node) {
       return;
     case ND_IF:
       gen_if(node);
+      return;
+    case ND_WHILE:
+      gen_while(node);
       return;
     case ND_RETURN:
       gen(node->lhs);

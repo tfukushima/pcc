@@ -78,6 +78,7 @@ static Node *new_lvar_node(LVar *lvar) {
 //   program    = stmt*
 //   stmt       = expr ";"
 //              | "if" "(" expr ")" stmt ("else" stmt)?
+//              | "while" "(" expr ")" stmt
 //              | "return" expr ";"
 //   expr       = assign
 //   assign     = equality ("=" assign)?
@@ -126,6 +127,7 @@ Function *program() {
  *
  *   stmt       = expr ";"
  *              | "if" "(" expr ")" stmt ("else" stmt)?
+ *              | "while" "(" expr ")" stmt
  *              | "return" expr ";"
  *
  * @return the constructed AST node
@@ -143,6 +145,12 @@ static Node *stmt() {
       ebody = stmt();
     }
     node = new_node(ND_IF, cond, new_node(ND_IF, body, ebody));
+    return node;
+  } else if (consume("while")) {
+    expect("(");
+    Node *cond = expr();
+    expect(")");
+    node = new_node(ND_WHILE, cond, stmt());
     return node;
   } else if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
