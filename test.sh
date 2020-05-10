@@ -63,5 +63,9 @@ assert 42 "a = 0; b = 0; if (a == b) 42; else 1;"
 assert 42 "a = 0; b = 0; if (a < b) 1; else 42;"
 assert 10 "a = 0; while (a < 10) a = a + 1; a;"
 assert 0 "a = 10; while (a > 0) a = a - 1; a;"
+assert 20 "a = 0; for (i = 0; i < 10; i = i + 1) a = a + 2; a;"
+assert 0 "a = 10; for (i = 0; i < 10; i = i + 1) a = a - 1; a;"
+assert 0 "a = 0; for (i = 0; i < 0;)  a = a + 1; a;"
+assert 10 "i = 0; for (;i < 10;) i = i + 1; i;"
 
 echo OK

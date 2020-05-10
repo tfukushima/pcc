@@ -79,6 +79,7 @@ static Node *new_lvar_node(LVar *lvar) {
 //   stmt       = expr ";"
 //              | "if" "(" expr ")" stmt ("else" stmt)?
 //              | "while" "(" expr ")" stmt
+//              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //              | "return" expr ";"
 //   expr       = assign
 //   assign     = equality ("=" assign)?
@@ -128,6 +129,7 @@ Function *program() {
  *   stmt       = expr ";"
  *              | "if" "(" expr ")" stmt ("else" stmt)?
  *              | "while" "(" expr ")" stmt
+ *              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
  *              | "return" expr ";"
  *
  * @return the constructed AST node
@@ -152,6 +154,25 @@ static Node *stmt() {
     expect(")");
     node = new_node(ND_WHILE, cond, stmt());
     return node;
+  } else if (consume("for")) {
+    expect("(");
+    Node *decl = NULL;
+    if (!consume(";")) {
+      decl = expr();
+      expect(";");
+    }
+    Node *cond = NULL;
+    if (!consume(";")) {
+      cond = expr();
+      expect(";");
+    }
+    Node *post = NULL;
+    if (!consume(")")) {
+      post = expr();
+      expect(")");
+    }
+    const Node *body = stmt();
+    return new_node(ND_FOR, decl, new_node(ND_FOR, cond, new_node(ND_FOR, post, body)));
   } else if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
   } else {

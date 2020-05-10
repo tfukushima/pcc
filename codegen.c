@@ -65,6 +65,43 @@ static void gen_while(const Node *node) {
 }
 
 /*
+ * Generates a series of assembly code for the for statement.
+ */
+static void gen_for(const Node *node) {
+  if (node->kind != ND_FOR) {
+    error_at(token->str, "Not a for statement.");
+  }
+
+  // Generate the code for the declaration clause.
+  const Node * const decl = node->lhs;
+  if (decl) {
+    gen(decl);
+  }
+  const Node *rest = node->rhs;
+  printf(".L.begin.%d:\n", label_seq);
+  // Generate the code for the condition clause.
+  const Node * const cond = rest->lhs;
+  if (cond) {
+    gen(cond);
+  }
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.end.%d\n", label_seq);
+  rest = rest->rhs;
+  const Node * const post = rest->lhs;
+  const Node * const body = rest->rhs;
+  // Generate the code fo the body of the for statement.
+  gen(body);
+  if (post) {
+    // Generate the code for the post processing clause.
+    gen(post);
+  }
+  printf("  jmp .L.begin.%d\n", label_seq);
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
+}
+
+/*
  * Generate a series of assembly code that emulates stack machine from the AST
  *
  * @param node the node from which the assembly code is generated
@@ -97,6 +134,9 @@ static void gen(const Node *node) {
       return;
     case ND_WHILE:
       gen_while(node);
+      return;
+    case ND_FOR:
+      gen_for(node);
       return;
     case ND_RETURN:
       gen(node->lhs);
