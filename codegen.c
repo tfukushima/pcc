@@ -120,6 +120,19 @@ static void gen_block(const Node *node) {
 }
 
 /*
+ * Generates a series of assembly code for the function call.
+ */
+static void gen_funcall(const Node *node) {
+  if (node->kind != ND_FUNCALL) {
+    error_at(token->str, "Not a function call.");
+  }
+
+  printf("  call %s\n", node->name);
+  // Push the return value of the function on RAX.
+  printf("  push rax\n");
+}
+
+/*
  * Generate a series of assembly code that emulates stack machine from the AST
  *
  * @param node the node from which the assembly code is generated
@@ -158,6 +171,9 @@ static void gen(const Node *node) {
       return;
     case ND_BLOCK:
       gen_block(node);
+      return;
+    case ND_FUNCALL:
+      gen_funcall(node);
       return;
     case ND_RETURN:
       gen(node->lhs);

@@ -74,6 +74,12 @@ static Node *new_lvar_node(LVar *lvar) {
   return node;
 }
 
+static Node *new_funcall_node(const char *name) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_FUNCALL;
+  node->name = name;
+}
+
 // Production rules:
 //   program    = stmt*
 //   stmt       = expr ";"
@@ -89,7 +95,7 @@ static Node *new_lvar_node(LVar *lvar) {
 //   add        = mul ("+" mul | "-" mul)*
 //   mul        = unary ("*" unary | "/" unary)*
 //   unary      = ("+"  | "-")? primary
-//   primary    = num | ident | "(" expr ")"
+//   primary    = num | ident ( "(" ")" )? | "(" expr ")"
 static Node *stmt();
 static Node *expr();
 static Node *assign();
@@ -333,7 +339,7 @@ static Node *unary() {
 /*
  * Parse tokens with the "primary" production rule
  *
- *   primary = num | ident | "(" expr ")"
+ *   primary    = num | ident ( "(" ")" )? | "(" expr ")"
  *
  * @return the constructed AST node
  */
@@ -346,6 +352,10 @@ static Node *primary() {
 
   Token *tok = consume_ident();
   if (tok) {
+    if (consume("(")) {
+      expect(")");
+      return new_funcall_node(strndup(tok->str, tok->len));
+    }
     LVar *lvar = find_lvar(tok);
     if (!lvar) {
       lvar = new_lvar(strndup(tok->str, tok->len));
