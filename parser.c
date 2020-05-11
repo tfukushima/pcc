@@ -95,7 +95,9 @@ static Node *new_funcall_node(const char *name) {
 //   add        = mul ("+" mul | "-" mul)*
 //   mul        = unary ("*" unary | "/" unary)*
 //   unary      = ("+"  | "-")? primary
-//   primary    = num | ident ( "(" ")" )? | "(" expr ")"
+//   primary    = num
+//              | ident ( "(" expr? ("," expr)* ")" )?
+//              | "(" expr ")"
 static Node *stmt();
 static Node *expr();
 static Node *assign();
@@ -339,7 +341,9 @@ static Node *unary() {
 /*
  * Parse tokens with the "primary" production rule
  *
- *   primary    = num | ident ( "(" ")" )? | "(" expr ")"
+ *   primary    = num
+ *              | ident ( "(" expr? ("," expr)* ")" )?
+ *              | "(" expr ")"
  *
  * @return the constructed AST node
  */
@@ -352,9 +356,26 @@ static Node *primary() {
 
   Token *tok = consume_ident();
   if (tok) {
+    const char *func = strndup(tok->str, tok->len);
     if (consume("(")) {
-      expect(")");
-      return new_funcall_node(strndup(tok->str, tok->len));
+      Node *args = NULL;
+      const Node *head = NULL;
+      int argn = 0;
+      while (!consume(")")) {
+        if (args == NULL) {
+          args = new_node(ND_FUNCALL, expr(), NULL);
+          head = args;
+        } else {
+          expect(",");
+          args->rhs = new_node(ND_FUNCALL, expr(), NULL);
+          args = args->rhs;
+        }
+        argn++;
+      }
+      Node *funcall = new_funcall_node(func);
+      funcall->lhs = head;
+      funcall->val = argn;
+      return funcall;
     }
     LVar *lvar = find_lvar(tok);
     if (!lvar) {

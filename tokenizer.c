@@ -198,7 +198,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (strchr("+-*/()<>{}=!;", *p)) {
+    if (strchr("+-*/()<>{}=!;,", *p)) {
       if ((*p == '=' || *p == '!' || *p == '<' || *p == '>') && *(p+1) == '=') {
         cur = new_token(TK_RESERVED, cur, p, 2);
         p += 2;

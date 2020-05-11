@@ -2,6 +2,8 @@
 
 static int label_seq = 0;
 
+static const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
 static void gen(const Node *node);
 
 /*
@@ -127,6 +129,22 @@ static void gen_funcall(const Node *node) {
     error_at(token->str, "Not a function call.");
   }
 
+  const Node *arg = node->lhs;
+  int argn = 0;
+  while (arg) {
+    if (argn > 5) {
+      fprintf(stderr, "More than six arguments are not supported yet.\n");
+      exit(-1);
+    }
+    // Generate the code for the argument.
+    gen(arg->lhs);
+    arg = arg->rhs;
+    argn++;
+  }
+
+  for (int i = 0; i < argn; i++) {
+    printf("  pop %s\n", arg_regs[i]);
+  }
   printf("  call %s\n", node->name);
   // Push the return value of the function on RAX.
   printf("  push rax\n");

@@ -92,5 +92,8 @@ assert 89 "a = 0; b = 1; for (i = 0; i < 10; i = i + 1) { tmp = b; b = a + b; a 
 assert 42 "{{{{{ return 42; }}}}}"
 
 assert_funcall 42 "foo();"
+assert_funcall 1 "bar(0, 1);"
+assert_funcall 14 "bar(1*2, 3*4);"
+assert_funcall 42 "bar(3*7, -3*(-7));"
 
 echo OK
