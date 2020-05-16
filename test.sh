@@ -67,5 +67,10 @@ assert 20 "a = 0; for (i = 0; i < 10; i = i + 1) a = a + 2; a;"
 assert 0 "a = 10; for (i = 0; i < 10; i = i + 1) a = a - 1; a;"
 assert 0 "a = 0; for (i = 0; i < 0;)  a = a + 1; a;"
 assert 10 "i = 0; for (;i < 10;) i = i + 1; i;"
+assert 42 "{ return 42; }"
+assert 1 "{ a = 0; b = 1; return (a + b); }"
+assert 42 "if (0 < 1) { a = 42; return a; } else { return 1; }"
+assert 89 "a = 0; b = 1; for (i = 0; i < 10; i = i + 1) { tmp = b; b = a + b; a = tmp; } b;"
+assert 42 "{{{{{ return 42; }}}}}"
 
 echo OK

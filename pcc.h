@@ -133,6 +133,7 @@ typedef enum {
   ND_IF,     // if statement
   ND_WHILE,  // while statement
   ND_FOR,    // for statement
+  ND_BLOCK,  // blocks
   ND_RETURN, // Return statement
 } NodeKind;
 

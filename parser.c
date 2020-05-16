@@ -77,6 +77,7 @@ static Node *new_lvar_node(LVar *lvar) {
 // Production rules:
 //   program    = stmt*
 //   stmt       = expr ";"
+//              | "{" stmt* "}"
 //              | "if" "(" expr ")" stmt ("else" stmt)?
 //              | "while" "(" expr ")" stmt
 //              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -127,6 +128,7 @@ Function *program() {
  * Parse tokens with the "stmt" production rule
  *
  *   stmt       = expr ";"
+ *              | "{" stmt* "}"
  *              | "if" "(" expr ")" stmt ("else" stmt)?
  *              | "while" "(" expr ")" stmt
  *              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
@@ -137,7 +139,15 @@ Function *program() {
 static Node *stmt() {
   Node *node;
 
-  if (consume("if")) {
+  if (consume("{")) {
+    node = new_node(ND_BLOCK, NULL, NULL);
+    Node *head = node;
+    while (!consume("}")) {
+        node->next = stmt();
+        node = node->next;
+    }
+    return head;
+  } else if (consume("if")) {
     expect("(");
     Node *cond = expr();
     expect(")");

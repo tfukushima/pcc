@@ -102,6 +102,24 @@ static void gen_for(const Node *node) {
 }
 
 /*
+ * Generates a series of assembly code for the block.
+ */
+static void gen_block(const Node *node) {
+  if (node->kind != ND_BLOCK) {
+    error_at(token->str, "Not a block.");
+  }
+
+  const Node *cur = node->next;
+  while (cur) {
+    gen(cur);
+    if (cur->kind != ND_RETURN) {
+      printf("  pop rax\n");
+    }
+    cur = cur->next;
+  }
+}
+
+/*
  * Generate a series of assembly code that emulates stack machine from the AST
  *
  * @param node the node from which the assembly code is generated
@@ -137,6 +155,9 @@ static void gen(const Node *node) {
       return;
     case ND_FOR:
       gen_for(node);
+      return;
+    case ND_BLOCK:
+      gen_block(node);
       return;
     case ND_RETURN:
       gen(node->lhs);
