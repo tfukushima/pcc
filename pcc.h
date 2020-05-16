@@ -1,12 +1,13 @@
+#define _POSIX_C_SOURCE 200809L  // For strndup
+#ifndef PCC_H_
+#define PCC_H_
+
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#ifndef PCC_H_
-#define PCC_H_
 
 // Tokenizer
 
@@ -130,17 +131,29 @@ typedef enum {
   ND_LVAR,   // Local variable
 } NodeKind;
 
+typedef struct LVar LVar;
+
+/**
+ * Local variable type
+ */
+struct LVar {
+  LVar *next;        // The next local variable or NULL.
+  const char *name;  // The name of the local variable.
+  int offset;        // The offset from the base register, RBP.
+};
+
 typedef struct Node Node;
 
 /**
  * The AST node type
  */
 struct Node {
-  NodeKind kind;   // The kind of the node
-  const Node *lhs; // Left hand side
-  const Node *rhs; // Right hand side
-  int val;         // The value of the integer if the kind is ND_NUM
-  int offset;      // The offset for the variable only if the kind is ND_LVAR
+  NodeKind kind;     // The kind of the node
+  Node *next;        // The next AST node that contains another statement
+  const Node *lhs;   // Left hand side
+  const Node *rhs;   // Right hand side
+  int val;           // The value of the integer if the kind is ND_NUM
+  LVar *lvar;        // The local variable only if the kind is ND_LVAR
 };
 
 /**
@@ -148,14 +161,29 @@ struct Node {
  */
 extern Node *code[100];
 
+typedef struct Function Function;
+
+/**
+ * The function implementation consists of its parsed code, local variables
+ * and required stack size.
+ */
+struct Function {
+  Node *node;
+  LVar *locals;
+  int stack_size;
+};
+
+
 /**
  * Parse tokens with the "program" production rule
  *
  *   stmt       = expr ";"
  *
  * The parsed result is store in the global variable "code".
+ *
+ * @return the parsed code as a function
  */
-void *program();
+Function *program();
 
 
 // Assembly code generator
@@ -163,8 +191,8 @@ void *program();
 /**
  * Generate a series of assembly code that emulates stack machine from the AST
  *
- * @param node the node from which the assembly code is generated
+ * @param program the function from which the assembly code is generated
  */
-void codegen(const Node *node);
+void codegen(const Function *program);
 
 #endif  // PCC_H_

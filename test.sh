@@ -50,5 +50,9 @@ assert 1 "a=0;a+1;"
 assert 25 "a=0;b=a+1;c=b+1;d=c+1;e=d+1;f=e+1;g=f+1;h=g+1;i=h+1;j=i+1;k=j+1;l=k+1;m=l+1;n=m+1;o=n+1;p=o+1;q=p+1;r=q+1;s=r+1;t=s+1;u=t+1;v=u+1;w=v+1;x=w+1;y=x+1;z=y+1;"
 assert 3 "a = 1; b = 2; c = a + b;"
 assert 42 "a=1; b=2; c=3; d=7; a*b*c*d;"
+assert 6 "foo = 1; bar = 2 + 3; foo + bar;"
+assert 0 "variablewithlongname = 1; anothervariablewithyetlongname = -1; variablewithlongname + anothervariablewithyetlongname;"
+assert 42 "a1ph4numname = 42; a1ph4numname;"
+assert 42 "foo_bar = 21; baz_ = 2; quxx = foo_bar * baz_;"
 
 echo OK

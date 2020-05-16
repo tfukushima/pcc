@@ -10,7 +10,7 @@ static void gen_lval(const Node *node) {
   }
 
   printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
+  printf("  sub rax, %d\n", node->lvar->offset);
   printf("  push rax\n");
 }
 
@@ -100,16 +100,16 @@ static void gen(const Node *node) {
 }
 
 /*
- * Generate prologue of the code and output it to stdout.
+ * Generate prologue of the function and output it to stdout.
  */
-static void gen_prologue() {
+static void gen_prologue(const Function *program) {
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
-  printf("  sub rsp, 208\n");  // allocate 26 (chars) * 8 bytes for variables.
+  printf("  sub rsp, %d\n", program->stack_size);
 }
 
 /*
- * Generate epilogue of the code and output it to stdout.
+ * Generate epilogue of the function and output it to stdout.
  */
 static void gen_epilogue() {
   printf("  mov rsp, rbp\n");
@@ -121,21 +121,23 @@ static void gen_epilogue() {
  * Generate a complete assembly code that emulates stack machine from the AST
  * and output it to stdout.
  *
- * @param node the node from which the assembly code is generated
+ * @param program the function from which the assembly code is generated
  */
-void codegen(const Node *node) {
+void codegen(const Function *program) {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
   printf("main:\n");
 
-  gen_prologue();
+  gen_prologue(program);
 
-  for (int i = 0; code[i]; i++) {
+  Node *cur = program->node;
+  while (cur) {
     // Generate a seris of assembly code descending the AST nodes.
-    gen(code[i]);
+    gen(cur);
 
     // Pop the top of the stack and load it to RAX.
     printf("  pop rax\n");
+    cur = cur->next;
   }
 
   gen_epilogue();
