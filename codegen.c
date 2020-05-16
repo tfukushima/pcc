@@ -1,5 +1,9 @@
 #include "pcc.h"
 
+static int label_seq = 0;
+
+static void gen(const Node *node);
+
 /*
  * Generate a series of assembly code that pushes the left value to the stack
  * and output it to stdout.
@@ -12,6 +16,89 @@ static void gen_lval(const Node *node) {
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->lvar->offset);
   printf("  push rax\n");
+}
+
+/*
+ * Generates a series of assembly code for the if statement.
+ */
+static void gen_if(const Node *node) {
+  if (node->kind != ND_IF) {
+    error_at(token->str, "Not an if statement.");
+  }
+
+  // Generate the condition code.
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.else.%d\n", label_seq);
+  const Node *bodies = node->rhs;
+  // Generate the body code.
+  gen(bodies->lhs);
+  printf("  jmp .L.end.%d\n", label_seq);
+  printf(".L.else.%d:\n", label_seq);
+  // Generate the else body code if any.
+  if (bodies->rhs) {
+    gen(bodies->rhs);
+  }
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
+}
+
+/*
+ * Generates a series of assembly code for the while statement.
+ */
+static void gen_while(const Node *node) {
+  if (node->kind != ND_WHILE) {
+    error_at(token->str, "Not a while statement.");
+  }
+
+  printf(".L.begin.%d:\n", label_seq);
+  // Generate the condition code;
+  gen(node->lhs);
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.end.%d\n", label_seq);
+  gen(node->rhs);
+  printf("  jmp .L.begin.%d\n", label_seq);
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
+}
+
+/*
+ * Generates a series of assembly code for the for statement.
+ */
+static void gen_for(const Node *node) {
+  if (node->kind != ND_FOR) {
+    error_at(token->str, "Not a for statement.");
+  }
+
+  // Generate the code for the declaration clause.
+  const Node * const decl = node->lhs;
+  if (decl) {
+    gen(decl);
+  }
+  const Node *rest = node->rhs;
+  printf(".L.begin.%d:\n", label_seq);
+  // Generate the code for the condition clause.
+  const Node * const cond = rest->lhs;
+  if (cond) {
+    gen(cond);
+  }
+  printf("  pop rax\n");
+  printf("  cmp rax, 0\n");
+  printf("  je .L.end.%d\n", label_seq);
+  rest = rest->rhs;
+  const Node * const post = rest->lhs;
+  const Node * const body = rest->rhs;
+  // Generate the code fo the body of the for statement.
+  gen(body);
+  if (post) {
+    // Generate the code for the post processing clause.
+    gen(post);
+  }
+  printf("  jmp .L.begin.%d\n", label_seq);
+  printf(".L.end.%d:\n", label_seq);
+  label_seq++;
 }
 
 /*
@@ -41,6 +128,15 @@ static void gen(const Node *node) {
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
 
+      return;
+    case ND_IF:
+      gen_if(node);
+      return;
+    case ND_WHILE:
+      gen_while(node);
+      return;
+    case ND_FOR:
+      gen_for(node);
       return;
     case ND_RETURN:
       gen(node->lhs);

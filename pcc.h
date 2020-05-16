@@ -130,6 +130,9 @@ typedef enum {
   ND_LE,     // <=
   ND_ASSIGN, // Variable assignment
   ND_LVAR,   // Local variable
+  ND_IF,     // if statement
+  ND_WHILE,  // while statement
+  ND_FOR,    // for statement
   ND_RETURN, // Return statement
 } NodeKind;
 

@@ -158,6 +158,30 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (!strncmp(p, "if", 2) && !isalnumu(p[2])) {
+      cur = new_token(TK_RESERVED, cur, p, 2);
+      p += 2;
+      continue;
+    }
+
+    if (!strncmp(p, "else", 4) && !isalnumu(p[4])) {
+      cur = new_token(TK_RESERVED, cur, p, 4);
+      p += 4;
+      continue;
+    }
+
+    if (!strncmp(p, "while", 5) && !isalnumu(p[5])) {
+      cur = new_token(TK_RESERVED, cur, p, 5);
+      p += 5;
+      continue;
+    }
+
+    if (!strncmp(p, "for", 3) && !isalnumu(p[3])) {
+      cur = new_token(TK_RESERVED, cur, p, 3);
+      p += 3;
+      continue;
+    }
+
     if (!strncmp(p, "return", 6) && !isalnumu(p[6])) {
       cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;
