@@ -81,7 +81,8 @@ static Node *new_funcall_node(const char *name) {
 }
 
 // Production rules:
-//   program    = stmt*
+//   program    = function*
+//   function   = ident ( "(" ident? ("," ident)* ")" ) "{" stmt* "}"
 //   stmt       = expr ";"
 //              | "{" stmt* "}"
 //              | "if" "(" expr ")" stmt ("else" stmt)?
@@ -98,6 +99,7 @@ static Node *new_funcall_node(const char *name) {
 //   primary    = num
 //              | ident ( "(" expr? ("," expr)* ")" )?
 //              | "(" expr ")"
+static Function *function();
 static Node *stmt();
 static Node *expr();
 static Node *assign();
@@ -111,25 +113,89 @@ static Node *primary();
 /**
  * Parse tokens with the "program" production rule
  *
- *   stmt       = expr ";"
+ *   program    = function*
  *
  * The parsed result is store in the global variable "code".
  */
 Function *program() {
-  Node head = {};
-  Node *cur = &head;
-
+  Function *cur_func = NULL;
+  Function *head;
   while (!at_eof()) {
-    cur->next = stmt();
-    cur = cur->next;
+    Function *func = function();
+    if (!cur_func) {
+      cur_func = func;
+      head = cur_func;
+    } else {
+      cur_func->next = func;
+      cur_func = cur_func->next;
+    }
   }
 
-  Function *program = calloc(1, sizeof(Function));
-  program->node = head.next;
-  program->locals = locals;
-  program->stack_size = locals ? locals->offset : 0;
+  return head;
+}
 
-  return program;
+
+/*
+ * Parse tokens with the "stmt" production rule
+ *
+ *   function   = ident ( "(" expr? ("," expr)* ")" ) "{" stmt* "}"
+ *
+ * @return the constructed AST node
+ */
+static Function *function() {
+  const Token *tok = consume_ident();
+  if (!tok) {
+    error_at(tok->str, "not a function.");
+  }
+
+  const char *func_name = strndup(tok->str, tok->len);
+
+  Function *func = calloc(1, sizeof(Function));
+  func->name = func_name;
+
+  Node *cur_node = NULL;
+  // Parse the function arguments.
+  expect("(");
+  int argn = 0;
+  while (!consume(")")) {
+    if (argn > 0) {
+      expect(",");
+    }
+    tok = consume_ident();
+    LVar *lvar = find_lvar(tok);
+    if (!lvar) {
+      lvar = new_lvar(strndup(tok->str, tok->len));
+    }
+    Node *lvar_node = new_lvar_node(lvar);
+    if (!cur_node) {
+      func->node = lvar_node;
+      cur_node = func->node;
+    } else {
+      cur_node->next = lvar_node;
+      cur_node = cur_node->next;
+    }
+    argn++;
+  }
+
+  func->argn = argn;
+
+  // Parse the function body.
+  expect("{");
+  while (!consume("}")) {
+    Node *node = stmt();
+    if (!func->node) {
+      func->node = node;
+      cur_node = func->node;
+    } else {
+      cur_node->next = node;
+      cur_node = cur_node->next;
+    }
+  }
+  func->locals = locals;
+  func->stack_size = locals ? align_to(locals->offset, 16) : 0;
+  locals = NULL;
+
+  return func;
 }
 
 /*
