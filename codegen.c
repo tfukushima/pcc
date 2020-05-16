@@ -264,6 +264,10 @@ static void gen_prologue(const Function *program) {
   printf("  push rbp\n");
   printf("  mov rbp, rsp\n");
   printf("  sub rsp, %d\n", program->stack_size);
+  for (int i = 0; i < program->argn; i++) {
+    printf("  mov rax, rbp\n");
+    printf("  mov [rax-%d], %s\n", 8 * (i+1), arg_regs[i]);
+  }
 }
 
 /*
@@ -284,19 +288,20 @@ static void gen_epilogue() {
 void codegen(const Function *program) {
   printf(".intel_syntax noprefix\n");
   printf(".global main\n");
-  printf("main:\n");
 
-  gen_prologue(program);
+  const Function *cur_func = program;
+  while (cur_func) {
+    printf("\n%s:\n", cur_func->name);
+    gen_prologue(cur_func);
 
-  Node *cur = program->node;
-  while (cur) {
-    // Generate a seris of assembly code descending the AST nodes.
-    gen(cur);
+    const Node *cur = cur_func->node;
+    while (cur) {
+      // Generate a seris of assembly code descending the AST nodes.
+      gen(cur);
+      cur = cur->next;
+    }
 
-    // Pop the top of the stack and load it to RAX.
-    printf("  pop rax\n");
-    cur = cur->next;
+    gen_epilogue();
+    cur_func = cur_func->next;
   }
-
-  gen_epilogue();
 }

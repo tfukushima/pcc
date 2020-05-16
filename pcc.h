@@ -176,9 +176,12 @@ typedef struct Function Function;
  * and required stack size.
  */
 struct Function {
-  Node *node;
-  LVar *locals;
-  int stack_size;
+  const char* name;  // The function name
+  Node *node;        // The next node in the function
+  LVar *locals;      // Local variables and arugments
+  int stack_size;    // The stack size
+  Function *next;    // The next function
+  int argn;          // The number of arguments;
 };
 
 
@@ -202,5 +205,17 @@ Function *program();
  * @param program the function from which the assembly code is generated
  */
 void codegen(const Function *program);
+
+
+// Type
+
+/**
+ * Aligns an integer value to the specific number.
+ *
+ * @param n     the integer to be aligned
+ * @param align the number to which the integer value is aligned
+ * @return the integer value aligned to the given number.
+ */
+int align_to(int n, int align);
 
 #endif  // PCC_H_
