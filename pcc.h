@@ -119,22 +119,23 @@ Token *tokenize(char *p);
  * The kind of abstract syntax tree (AST) nodes
  */
 typedef enum {
-  ND_ADD,    // +
-  ND_SUB,    // -
-  ND_MUL,    // *
-  ND_DIV,    // /
-  ND_NUM,    // Integer
-  ND_EQ,     // ==
-  ND_NE,     // !=
-  ND_LT,     // <
-  ND_LE,     // <=
-  ND_ASSIGN, // Variable assignment
-  ND_LVAR,   // Local variable
-  ND_IF,     // if statement
-  ND_WHILE,  // while statement
-  ND_FOR,    // for statement
-  ND_BLOCK,  // blocks
-  ND_RETURN, // Return statement
+  ND_ADD,      // +
+  ND_SUB,      // -
+  ND_MUL,      // *
+  ND_DIV,      // /
+  ND_NUM,      // Integer
+  ND_EQ,       // ==
+  ND_NE,       // !=
+  ND_LT,       // <
+  ND_LE,       // <=
+  ND_ASSIGN,   // Variable assignment
+  ND_LVAR,     // Local variable
+  ND_IF,       // if statement
+  ND_WHILE,    // while statement
+  ND_FOR,      // for statement
+  ND_BLOCK,    // blocks
+  ND_FUNCALL,  // function call
+  ND_RETURN,   // Return statement
 } NodeKind;
 
 typedef struct LVar LVar;
@@ -160,6 +161,7 @@ struct Node {
   const Node *rhs;   // Right hand side
   int val;           // The value of the integer if the kind is ND_NUM
   LVar *lvar;        // The local variable only if the kind is ND_LVAR
+  const char *name;  // The name of the funciton only if kind is ND_FUNCALL
 };
 
 /**

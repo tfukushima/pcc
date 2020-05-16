@@ -17,6 +17,24 @@ assert() {
   fi
 }
 
+assert_funcall() {
+  expected="$1"
+  input="$2"
+
+  cc -c test.c
+  ./pcc "$input" > tmp.s
+  cc -o tmp tmp.s test.o
+  ./tmp
+  actual="$?"
+
+  if [[ "$actual" = "$expected" ]]; then
+    echo "$input => $actual"
+  else
+    echo "$input => $expected expected, but got $actual"
+    exit 1
+  fi
+}
+
 assert 0 "0;"
 assert 42 "42;"
 assert 21 "5+20-4;"
@@ -72,5 +90,10 @@ assert 1 "{ a = 0; b = 1; return (a + b); }"
 assert 42 "if (0 < 1) { a = 42; return a; } else { return 1; }"
 assert 89 "a = 0; b = 1; for (i = 0; i < 10; i = i + 1) { tmp = b; b = a + b; a = tmp; } b;"
 assert 42 "{{{{{ return 42; }}}}}"
+
+assert_funcall 42 "foo();"
+assert_funcall 1 "bar(0, 1);"
+assert_funcall 14 "bar(1*2, 3*4);"
+assert_funcall 42 "bar(3*7, -3*(-7));"
 
 echo OK
