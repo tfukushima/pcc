@@ -136,6 +136,8 @@ typedef enum {
   ND_BLOCK,    // blocks
   ND_FUNCALL,  // function call
   ND_RETURN,   // Return statement
+  ND_ADDR,     // unary &
+  ND_DEREF,    // unary *
 } NodeKind;
 
 typedef struct LVar LVar;

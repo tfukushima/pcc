@@ -106,4 +106,7 @@ assert 42 "ans(a, b) { if (a + b >= 42) { return a+b; } else { return ans(a+1, b
 assert 120 "factorial(n) { if (n == 1) return 1; return n * factorial(n-1); } main() { return factorial(5); }"
 assert 55 "fib(n) { if (n == 0) return 0; if (n == 1) return 1; return fib(n-1) + fib(n-2); } main () { return fib(10); }"
 
+assert 3 "main() { x = 3; y = &x; return *y; }"
+assert 3 "main() { x = 3; y = 5; z = &y + 8; return *z; }"
+
 echo OK

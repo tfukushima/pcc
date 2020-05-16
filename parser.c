@@ -96,6 +96,7 @@ static Node *new_funcall_node(const char *name) {
 //   add        = mul ("+" mul | "-" mul)*
 //   mul        = unary ("*" unary | "/" unary)*
 //   unary      = ("+"  | "-")? primary
+//              | ("*" | "&") unary
 //   primary    = num
 //              | ident ( "(" expr? ("," expr)* ")" )?
 //              | "(" expr ")"
@@ -389,6 +390,7 @@ static Node *mul() {
  * Parse tokes with the "unary" production rule
  *
  *   unary   = ("+"  | "-")? primary
+ *           | ("*" | "&") unary
  *
  * @return the constructed AST node
  */
@@ -399,6 +401,14 @@ static Node *unary() {
 
   if (consume("-")) {
     return new_node(ND_SUB, new_node_num(0), primary());
+  }
+
+  if (consume("*")) {
+    return new_node(ND_DEREF, unary(), NULL);
+  }
+
+  if (consume("&")) {
+    return new_node(ND_ADDR, unary(), NULL);
   }
 
   return primary();
