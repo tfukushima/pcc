@@ -42,6 +42,13 @@ static void gen(const Node *node) {
       printf("  push rdi\n");
 
       return;
+    case ND_RETURN:
+      gen(node->lhs);
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      printf("  ret\n");
+      return;
   }
 
   gen(node->lhs);

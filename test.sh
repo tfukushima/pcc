@@ -54,5 +54,8 @@ assert 6 "foo = 1; bar = 2 + 3; foo + bar;"
 assert 0 "variablewithlongname = 1; anothervariablewithyetlongname = -1; variablewithlongname + anothervariablewithyetlongname;"
 assert 42 "a1ph4numname = 42; a1ph4numname;"
 assert 42 "foo_bar = 21; baz_ = 2; quxx = foo_bar * baz_;"
+assert 0 "return 0;"
+assert 42 "return 42;"
+assert 3 "a = 1; b = 2; return a+b;"
 
 echo OK
