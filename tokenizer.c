@@ -38,6 +38,21 @@ void error_at(char *loc, char *fmt, ...) {
 }
 
 /**
+ * Examines if the current token matches with a given string.
+ *
+ * @param s the string to examine with
+ * @return the current token if the current token matches with the given string,
+ *         otherwise NULL
+ */
+Token *peek(const char *s) {
+  if (token->kind != TK_RESERVED || strlen(s) != token->len ||
+      strncmp(token->str, s, token->len)) {
+    return NULL;
+  }
+  return token;
+}
+
+/**
  * Consume a token
  *
  * If the next token is the expected operator, scan a token and return true.
@@ -83,13 +98,11 @@ Token *consume_ident() {
  * If the next token is the expected string, scan a token. Otherwise report the
  * error.
  *
- * @param op the pointer to the expected string
+ * @param s the pointer to the expected string
  */
-void expect(char *op) {
-  if (token->kind != TK_RESERVED ||
-      strlen(op) != token->len ||
-      memcmp(token->str, op, token->len)) {
-    error_at(token->str, "expected \"%s\"", op);
+void expect(char *s) {
+  if (!peek(s)) {
+    error_at(token->str, "expected \"%s\"", s);
   }
   token = token->next;
 }
@@ -110,6 +123,20 @@ int expect_number() {
   token = token->next;
 
   return val;
+}
+
+/**
+ * Expects an identifier token.
+ *
+ * @param the identifier name if token is an identifier
+ */
+char *expect_ident() {
+  if (token->kind != TK_IDENT) {
+    error_at(token->str, "expected an identifier");
+  }
+  char *s = strndup(token->str, token->len);
+  token = token->next;
+  return s;
 }
 
 /**
@@ -185,6 +212,12 @@ Token *tokenize(char *p) {
     if (!strncmp(p, "return", 6) && !isalnumu(p[6])) {
       cur = new_token(TK_RETURN, cur, p, 6);
       p += 6;
+      continue;
+    }
+
+    if (!strncmp(p, "int", 3) && !isalnumu(p[3])) {
+      cur = new_token(TK_RESERVED, cur, p, 3);
+      p += 3;
       continue;
     }
 

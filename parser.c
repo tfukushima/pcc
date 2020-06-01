@@ -56,17 +56,18 @@ static LVar *find_lvar(const Token *tok) {
 }
 
 
-static LVar *new_lvar(const char *name) {
+static LVar *new_lvar(const char *name, const Type *type) {
   LVar *lvar = calloc(1, sizeof(LVar));
   lvar->next = locals;
   lvar->name = name;
+  lvar->type = type;
   lvar->offset = (locals ? locals->offset : 0) + 8;
   locals = lvar;
 
   return lvar;
 }
 
-static Node *new_lvar_node(LVar *lvar) {
+static Node *new_lvar_node(const LVar *lvar) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = ND_LVAR;
   node->lvar = lvar;
@@ -82,13 +83,18 @@ static Node *new_funcall_node(const char *name) {
 
 // Production rules:
 //   program    = function*
-//   function   = ident ( "(" ident? ("," ident)* ")" ) "{" stmt* "}"
-//   stmt       = expr ";"
+//   function   = typespec ident ( "(" params? ")" ) "{" stmt* "}"
+//   params     = param ("," param)*
+//   param      = typespec ident
+//   stmt       = decl
+//              | expr ";"
 //              | "{" stmt* "}"
 //              | "if" "(" expr ")" stmt ("else" stmt)?
 //              | "while" "(" expr ")" stmt
 //              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //              | "return" expr ";"
+//   decl       = typespec ident ";"
+//   typespec   = "int"
 //   expr       = assign
 //   assign     = equality ("=" assign)?
 //   equality   = relational ("==" relational | "!=" relational)*
@@ -102,6 +108,7 @@ static Node *new_funcall_node(const char *name) {
 //              | "(" expr ")"
 static Function *function();
 static Node *stmt();
+static Node *decl();
 static Node *expr();
 static Node *assign();
 static Node *equality();
@@ -110,6 +117,19 @@ static Node *add();
 static Node *mul();
 static Node *unary();
 static Node *primary();
+
+
+/*
+ * Parse tokens with "typespec" production rule
+ *
+ *   typespec   = "int"
+ *
+ * @return the construted AST node
+ */
+static Type *typespec() {
+  expect("int");
+  return int_type;
+}
 
 /**
  * Parse tokens with the "program" production rule
@@ -135,15 +155,23 @@ Function *program() {
   return head;
 }
 
+static Node* fparam() {
+  const Type *type = typespec();
+  const LVar *lvar = new_lvar(expect_ident(), type);
+  return new_lvar_node(lvar);
+}
 
 /*
  * Parse tokens with the "stmt" production rule
  *
- *   function   = ident ( "(" expr? ("," expr)* ")" ) "{" stmt* "}"
+ *   function   = typespec ident ( "(" params? ")" ) "{" stmt* "}"
+ *   fparams    = fparam ("," fparam)*
+ *   fparam     = typespec ident
  *
  * @return the constructed AST node
- */
+function */
 static Function *function() {
+  typespec();
   const Token *tok = consume_ident();
   if (!tok) {
     error_at(tok->str, "not a function.");
@@ -162,12 +190,7 @@ static Function *function() {
     if (argn > 0) {
       expect(",");
     }
-    tok = consume_ident();
-    LVar *lvar = find_lvar(tok);
-    if (!lvar) {
-      lvar = new_lvar(strndup(tok->str, tok->len));
-    }
-    Node *lvar_node = new_lvar_node(lvar);
+    Node *lvar_node = fparam();
     if (!cur_node) {
       func->node = lvar_node;
       cur_node = func->node;
@@ -202,7 +225,8 @@ static Function *function() {
 /*
  * Parse tokens with the "stmt" production rule
  *
- *   stmt       = expr ";"
+ *   stmt       = decl
+ *              | expr ";"
  *              | "{" stmt* "}"
  *              | "if" "(" expr ")" stmt ("else" stmt)?
  *              | "while" "(" expr ")" stmt
@@ -241,9 +265,9 @@ static Node *stmt() {
     return node;
   } else if (consume("for")) {
     expect("(");
-    Node *decl = NULL;
+    Node *init = NULL;
     if (!consume(";")) {
-      decl = expr();
+      init = expr();
       expect(";");
     }
     Node *cond = NULL;
@@ -257,15 +281,47 @@ static Node *stmt() {
       expect(")");
     }
     const Node *body = stmt();
-    return new_node(ND_FOR, decl, new_node(ND_FOR, cond, new_node(ND_FOR, post, body)));
+    return new_node(ND_FOR, init, new_node(ND_FOR, cond, new_node(ND_FOR, post, body)));
   } else if (consume("return")) {
     node = new_node(ND_RETURN, expr(), NULL);
-  } else {
-    node = expr();
+    expect(";");
+    return node;
+  } else if (peek("int")) {
+    return decl();
   }
+
+  node = expr();
   expect(";");
 
   return node;
+}
+
+/*
+ * Parse tokens with "decl production rule
+ *
+ *   decl       = typespec ident  ";"
+ *
+ * @return the constructed AST node
+ */
+static Node *decl() {
+  const Token *tok = token;
+  const Type *type = typespec();
+  LVar *lvar = new_lvar(expect_ident(), type);
+
+  expect(";");
+  return new_lvar_node(lvar);
+
+  /* if (!tok) { */
+  /*   error_at(tok->str, "Expected an identifier here."); */
+  /* } */
+  /* LVar *lvar = find_lvar(tok); */
+  /* if (!lvar) { */
+  /*   lvar = new_lvar(strndup(tok->str, tok->len)); */
+  /* } else { */
+  /*   error_at(tok->str, "Duplicated variable declaration."); */
+  /* } */
+
+  /* return new_lvar_node(lvar); */
 }
 
 /*
@@ -455,7 +511,7 @@ static Node *primary() {
     }
     LVar *lvar = find_lvar(tok);
     if (!lvar) {
-      lvar = new_lvar(strndup(tok->str, tok->len));
+      error_at(tok->str, "Undefined variable: %s", strndup(tok->str, tok->len));
     }
 
     return new_lvar_node(lvar);

@@ -1,5 +1,7 @@
 #include "pcc.h"
 
+Type *int_type = &(Type){ TY_INT };
+
 /**
  * Aligns an integer value to the specific number.
  *
@@ -9,4 +11,14 @@
  */
 int align_to(int n, int align) {
   return (n + align - 1) & ~(align - 1);
+}
+
+/**
+ * Examines if the given type is integer.
+ *
+ * @param type the type to examine
+ * @return true if the given type is integer, otherwise false
+ */
+bool is_integer(const Type *type) {
+  return type->kind == TY_INT;
 }

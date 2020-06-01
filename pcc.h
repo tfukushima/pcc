@@ -9,6 +9,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef struct Type Type;
+
 // Tokenizer
 
 /**
@@ -57,6 +59,15 @@ extern char *user_input;
 void error_at(char *loc, char *fmt, ...);
 
 /**
+ * Examines if the current token matches with a given string.
+ *
+ * @param s the string to examine with
+ * @return true if the current token matches with the given string, otherwise
+ *         false
+ */
+Token *peek(const char *s);
+
+/**
  * Consume a token
  *
  * If the next token is the expected operator, scan a token and return true.
@@ -80,12 +91,12 @@ Token *consume_ident();
 /**
  * Expects a valid token
  *
- * If the next token is the expected operator, scan a token. Otherwise report the
+ * If the next token is the expected string, scan a token. Otherwise report the
  * error.
  *
- * @param op the pointer to the operator string
+ * @param s the pointer to the expected string
  */
-void expect(char *op);
+void expect(char *s);
 
 /**
  * Expects a number token
@@ -96,6 +107,13 @@ void expect(char *op);
  * @return the value of the number token if the next token is a number
  */
 int expect_number();
+
+/**
+ * Expects an identifier token.
+ *
+ * @param the identifier name if token is an identifier
+ */
+char *expect_ident();
 
 /**
  * Examine if it is EOF
@@ -148,6 +166,7 @@ typedef struct LVar LVar;
 struct LVar {
   LVar *next;        // The next local variable or NULL.
   const char *name;  // The name of the local variable.
+  const Type *type;  // The type of the local variable.
   int offset;        // The offset from the base register, RBP.
 };
 
@@ -212,6 +231,22 @@ void codegen(const Function *program);
 // Type
 
 /**
+ * The kind of types.
+ */
+typedef enum {
+  TY_INT,
+} TypeKind;
+
+/**
+ * The type of functions and variables.
+ */
+struct Type {
+  TypeKind kind;  // The kind of the type
+};
+
+extern Type *int_type;
+
+/**
  * Aligns an integer value to the specific number.
  *
  * @param n     the integer to be aligned
@@ -219,5 +254,13 @@ void codegen(const Function *program);
  * @return the integer value aligned to the given number.
  */
 int align_to(int n, int align);
+
+/**
+ * Examines if the given type is integer.
+ *
+ * @param type the type to examine
+ * @return true if the given type is integer, otherwise false
+ */
+bool is_integer(const Type *type);
 
 #endif  // PCC_H_
