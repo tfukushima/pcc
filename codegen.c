@@ -8,18 +8,40 @@ static const char* arg_regs[] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 static void gen(const Node *node);
 
-/*
- * Generate a series of assembly code that pushes the left value to the stack
- * and output it to stdout.
- */
-static void gen_lval(const Node *node) {
+static void gen_lvar(const Node *node) {
   if (node->kind != ND_LVAR) {
-    error_at(token->str, "The left hand side of the assiment is not left value.");
+    error_at(token->str, "The left hand side of the assignment is not left value.");
   }
 
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->lvar->offset);
   printf("  push rax\n");
+}
+
+static void gen_deref(const Node *node) {
+  if (node->kind != ND_DEREF) {
+    error_at(token->str, "The left hand side of the assignment is not left value.");
+  }
+
+  gen(node->lhs);
+}
+
+/*
+ * Generate a series of assembly code that pushes the left value to the stack
+ * and output it to stdout.
+ */
+static void gen_lval(const Node *node) {
+  if (node->kind != ND_LVAR && node->kind != ND_DEREF) {
+    error_at(token->str, "The left hand side of the assiment is not left value.");
+  }
+
+  if (node->kind == ND_LVAR) {
+    gen_lvar(node);
+  }
+
+  if (node->kind == ND_DEREF) {
+    gen_deref(node);
+  }
 }
 
 /*

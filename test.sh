@@ -108,5 +108,9 @@ assert 55  "int fib(int n) { if (n == 0) return 0; if (n == 1) return 1; return 
 
 assert 3 "int main() { int x; x = 3; int y; y = &x; return *y; }"
 assert 3 "int main() { int x; x = 3; int y; y = 5; int z; z = &y + 8; return *z; }"
+assert 3 "int main() { int x; int *y; y = &x; *y = 3; return x; }"
+assert 3 "int main() { int x; int *y; int **z; z = &y; y = &x; **z = 3; return x; }"
+assert 4 "int main() { int x; int *y; int **z; z = &y; y = &x; *y = 4; return x; }"
+assert 5 "int main() { int x; int *y; int **z; z = &y; y = &x; x = 5; return **z; }"
 
 echo OK

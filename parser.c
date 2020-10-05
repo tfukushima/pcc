@@ -94,7 +94,7 @@ static Node *new_funcall_node(const char *name) {
 //              | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //              | "return" expr ";"
 //   decl       = typespec ident ";"
-//   typespec   = "int"
+//   typespec   = "int" "*"*
 //   expr       = assign
 //   assign     = equality ("=" assign)?
 //   equality   = relational ("==" relational | "!=" relational)*
@@ -106,6 +106,8 @@ static Node *new_funcall_node(const char *name) {
 //   primary    = num
 //              | ident ( "(" expr? ("," expr)* ")" )?
 //              | "(" expr ")"
+//              | deref
+//   deref      = "*"*  ident
 static Function *function();
 static Node *stmt();
 static Node *decl();
@@ -117,18 +119,23 @@ static Node *add();
 static Node *mul();
 static Node *unary();
 static Node *primary();
+static Node *deref();
 
 
 /*
  * Parse tokens with "typespec" production rule
  *
- *   typespec   = "int"
+ *   typespec   = "int" "*"*
  *
  * @return the construted AST node
  */
 static Type *typespec() {
   expect("int");
-  return int_type;
+  Type *ty = int_type;
+  while(consume("*")) {
+    ty = make_ptr_to(ty);
+  }
+  return ty;
 }
 
 /**
@@ -476,6 +483,7 @@ static Node *unary() {
  *   primary    = num
  *              | ident ( "(" expr? ("," expr)* ")" )?
  *              | "(" expr ")"
+ *              | deref
  *
  * @return the constructed AST node
  */
@@ -514,6 +522,43 @@ static Node *primary() {
       error_at(tok->str, "Undefined variable: %s", strndup(tok->str, tok->len));
     }
 
+    return new_lvar_node(lvar);
+  }
+
+  return deref();
+}
+
+/* Parse tokens with the "deref" production rule
+ *
+ *   deref      = "*" deref
+ *              | "*" ident
+ *              | ident
+ *              | num
+ *
+ * @return the constructed AST node
+ */
+static Node *deref() {
+  Node *node;
+
+  if (consume("*")) {
+    const Token *tok = consume_ident();
+    if (tok) {
+      const LVar *lvar = find_lvar(tok);
+      if (!lvar) {
+        error_at(tok->str, "Undefined variable: %s", strndup(tok->str, tok->len));
+      }
+      return new_node(ND_DEREF, new_lvar_node(lvar), NULL);
+    }
+
+    return new_node(ND_DEREF, deref(), NULL);
+  }
+
+  const Token *tok = consume_ident();
+  if (tok) {
+    const LVar *lvar = find_lvar(tok);
+    if (!lvar) {
+      error_at(tok->str, "Undefined variable: %s", strndup(tok->str, tok->len));
+    }
     return new_lvar_node(lvar);
   }
 
